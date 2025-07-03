@@ -1,0 +1,78 @@
+name: CI
+on: 
+  workflow_dispatch:
+ 
+jobs:
+ node-server-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+         Port: [10016, 10017, 10018, 10019, 10020]
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v2
+        name: Server build start on Port ${{matrix.Port}}
+      - name: Run the Server build process
+        uses: addnab/docker-run-action@v3
+        with:
+            image: ${{ secrets.IMAGE }}
+            run: |
+                if [ ${{ matrix.Port }} == "10016" ]; then
+                    C_KEY='${{ secrets.CLIENT_KEY1 }}'
+                elif [ ${{ matrix.Port }} == "10017" ]; then
+                    C_KEY='${{ secrets.CLIENT_KEY2 }}'
+                elif [ ${{ matrix.Port }} == "10018" ]; then
+                    C_KEY='${{ secrets.CLIENT_KEY3 }}'
+                elif [ ${{ matrix.Port }} == "10019" ]; then
+                    C_KEY='${{ secrets.CLIENT_KEY4 }}'
+                else
+                    C_KEY='${{ secrets.CLIENT_KEY5 }}'
+                fi
+                PORT=${{matrix.Port}} CLIENT_KEY=$C_KEY timeout 180m node server.js
+                echo $?
+            shell: bash
+
+ server-control:
+    runs-on: ubuntu-latest
+    needs: node-server-build
+    strategy:
+      fail-fast: false
+      matrix:
+         Port: [10016, 10017, 10018, 10019, 10020]
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v2
+        name: Server build start on Port ${{matrix.Port}}
+      - name: Run the Server build process
+        uses: addnab/docker-run-action@v3
+        with:
+            image: ${{ secrets.IMAGE }}
+            run: |
+                if [ ${{ matrix.Port }} == "10016" ]; then
+                    C_KEY='${{ secrets.CLIENT_KEY1 }}'
+                elif [ ${{ matrix.Port }} == "10017" ]; then
+                    C_KEY='${{ secrets.CLIENT_KEY2 }}'
+                elif [ ${{ matrix.Port }} == "10018" ]; then
+                    C_KEY='${{ secrets.CLIENT_KEY3 }}'
+                elif [ ${{ matrix.Port }} == "10019" ]; then
+                    C_KEY='${{ secrets.CLIENT_KEY4 }}'
+                else
+                    C_KEY='${{ secrets.CLIENT_KEY5 }}'
+                fi
+                PORT=${{matrix.Port}} CLIENT_KEY=$C_KEY timeout 180m node server.js
+                echo $?
+            shell: bash
+
+ clean-server:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [server-control, node-server-build]
+    timeout-minutes: 360
+    steps:
+      - name: Server Clean
+        uses: addnab/docker-run-action@v3
+        with:
+            image: ${{ secrets.CRIMAGE }}
+            run: |
+                KEY="${{ secrets.CRKEY}}" ./start.sh
